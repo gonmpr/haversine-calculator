@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 #include "pairs_parser.h"
+#include "reference_haversine.h"
 
 int main(void){
   pair_t *pairs = NULL;
@@ -13,12 +15,13 @@ int main(void){
 
   for (size_t i = 0; i < count; i++) {
       printf(
-          "x0:%f y0:%f -> x1:%f y1:%f\n",
+          "x0:%f y0:%f -> x1:%f y1:%f | ",
           pairs[i].x0,
           pairs[i].y0,
           pairs[i].x1,
           pairs[i].y1
       );
+      printf("d: %f\n", reference_haversine(pairs[i]));
   }
 
   free(pairs);
