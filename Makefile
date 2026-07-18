@@ -10,7 +10,8 @@ SRC = \
 	parser/jparse.c \
 	parser/parser.c \
 	parser/load_file.c \
-	timer/timer.c \
+	profiler/timer.c \
+	profiler/profiler.c \
 	$(LDFLAGS)	
 
 $(TARGET): $(SRC)
