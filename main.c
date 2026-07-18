@@ -9,8 +9,12 @@ typedef unsigned long long u64;
 
 int main(void){
 
+  PROFILE_START(setting_up);
+
   pair_t *pairs = NULL;
   size_t count = 0;
+
+  PROFILE_END(setting_up);
 
   PROFILE_BLOCK(json_parsing)
   {

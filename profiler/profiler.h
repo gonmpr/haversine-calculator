@@ -1,11 +1,15 @@
 #pragma once
 #include "timer.h"
 
-#define PROFILE_BLOCK(name)                                  \
-  for (u64 __start = read_cpu_clock();                     \
-       __start;                                            \
-       profile_record(#name, read_cpu_clock() - __start),  \
-       __start = 0)
+#define PROFILE_START(name) \
+    u64 profile_start_##name = read_cpu_clock()
+
+#define PROFILE_END(name) \
+    profile_record(#name, read_cpu_clock() - profile_start_##name)
+
+#define PROFILE_BLOCK(name) \
+    for (PROFILE_START(name); profile_start_##name; \
+         PROFILE_END(name), profile_start_##name = 0)
 
 
 typedef struct {
