@@ -44,7 +44,7 @@ int main(void){
 
   } //profile
 
-  profile_dump("profileo");
+  profiler_dump("profiler.data");
 
 }
 
