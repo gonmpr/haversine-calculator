@@ -59,7 +59,7 @@ void end_profile_scope(const char *name)
 static profiler_t profiler_init(size_t size){
   if (size == 0) size = 2;
 
-  recorder_t *start = malloc(sizeof(recorder_t) * size);
+  record_t *start = malloc(sizeof(record_t) * size);
   if(!start) return (profiler_t){0};
 
   profiler_t tmp_profiler = {
@@ -72,15 +72,15 @@ static profiler_t profiler_init(size_t size){
 }
 
 
-static bool profiler_push(profiler_t *profiler, recorder_t record)
+static bool profiler_push(profiler_t *profiler, record_t record)
 {
   if (profiler->count == profiler->capacity){
 
     profiler->capacity *= 2;
     profiler->capacity = profiler->capacity == 0 ? 2 : profiler->capacity;
 
-    recorder_t *new_start = realloc(profiler->start, 
-                              sizeof(recorder_t) * profiler->capacity);
+    record_t *new_start = realloc(profiler->start, 
+                              sizeof(record_t) * profiler->capacity);
     if (!new_start) return false;
     profiler->start = new_start;
   }
@@ -113,14 +113,6 @@ bool profile_record(const char *name, unsigned long long cycles)
 
     if(!strcmp(name, profiler.start[i].name)){
 
-      profiler.start[i].min = profiler.start[i].min < cycles ?
-                              profiler.start[i].min :
-                              cycles;
-
-      profiler.start[i].max = profiler.start[i].max > cycles ?
-                              profiler.start[i].max :
-                              cycles;
-
       profiler.start[i].calls++;
       profiler.start[i].cycles += cycles;
 
@@ -128,11 +120,9 @@ bool profile_record(const char *name, unsigned long long cycles)
     }
   }
 
-  recorder_t new_record = {.name = name, 
+  record_t new_record = {.name = name, 
                            .cycles = cycles, 
-                           .calls = 1,
-                           .min = cycles,
-                           .max = cycles};
+                           .calls = 1};
 
   return profiler_push(&profiler, new_record);
 }
@@ -151,35 +141,20 @@ bool profiler_dump(const char *file_name){
     }
 
 
-    fprintf(file_ptr, "ESTIMATED CPU CLOCK: %llu Hz\n", get_cpu_freq());
+    unsigned long long cpu_freq = get_cpu_freq();
+    fprintf(file_ptr, "ESTIMATED CPU CLOCK: %llu Hz\n", cpu_freq);
     fprintf(file_ptr, "TOTAL CYCLES: %llu (100%%)\n\n", total_cycles);
 
 
     for(size_t i = 0; i < profiler.count; i++){
-      if(profiler.start[i].calls > 1){
         fprintf(
           file_ptr,
-          "%s[%zu]:\n\tCYCLES: %llu (%.2f%%)\n\tAVG_CYCLES: %.0f"
-          "\n\tMIN: %llu\n\tMAX: %llu\n\n",
-          profiler.start[i].name,
-          profiler.start[i].calls,
-          profiler.start[i].cycles,
-          ((double)profiler.start[i].cycles / total_cycles) * 100,
-          (double)profiler.start[i].cycles / profiler.start[i].calls,
-          profiler.start[i].min,
-          profiler.start[i].max
-        );
-      }
-      else{
-        fprintf(
-          file_ptr,
-          "%s[%zu]:\n\tCYCLES: %llu (%.2f%%)\n\n",
+          "%s[%zu]: %llu (%.2f%%)\n",
           profiler.start[i].name,
           profiler.start[i].calls,
           profiler.start[i].cycles,
           ((double)profiler.start[i].cycles / total_cycles) * 100
         );
-      }
     }
 
     fclose(file_ptr);

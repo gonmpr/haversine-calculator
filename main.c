@@ -9,6 +9,8 @@ typedef unsigned long long u64;
 
 int main(void){
 
+
+  PROFILE_START(extras);
   PROFILE_START(setting_up);
 
   pair_t *pairs = NULL;
@@ -44,7 +46,8 @@ int main(void){
 
   } //profile
 
-  profiler_dump("profiler.data");
+  PROFILE_END(extras);
+  PROFILE_DUMP("profiler.data");
 
 }
 
