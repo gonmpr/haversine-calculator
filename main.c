@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "pairs_parser.h"
+#include "parser/pairs_parser.h"
 #include "reference_haversine.h"
 #include "profiler/profiler.h"
 
-typedef unsigned long long u64;
 
 int main(void){
 

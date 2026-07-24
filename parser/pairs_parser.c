@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "pairs_parser.h"
-#include "parser/jparse.h"
+#include "jparse.h"
 
 bool load_pairs_file(const char *filename,
                      pair_t **out_pairs,

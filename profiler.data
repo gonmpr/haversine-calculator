@@ -1,18 +1,10 @@
-ESTIMATED CPU CLOCK: 3392295190 Hz
-TOTAL CYCLES: 5813636436 (100%)
 
-setting_up[1]:
-	CYCLES: 28850 (0.00%)
+  ESTIMATED CPU CLOCK: 3392292099 Hz
+  TOTAL CYCLES: 7557533074 (100%)
 
-json_parsing[1]:
-	CYCLES: 5386599960 (92.65%)
-
-haversine[1000000]:
-	CYCLES: 423001855 (7.28%)
-	AVG_CYCLES: 423
-	MIN: 293
-	MAX: 134602
-
-finishing_up[1]:
-	CYCLES: 4005771 (0.07%)
+  setting_up[1]: 15151 (0.00%)
+  json_parsing[1]: 7008896521 (92.74%)
+  haversine[1000000]: 431246150 (5.71%)
+  finishing_up[1]: 4343798 (0.06%)
+  extras[1]: 113031454 (1.50%)
 

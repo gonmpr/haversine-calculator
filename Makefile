@@ -6,11 +6,10 @@ LDFLAGS = -lm
 SRC = \
 	main.c \
 	reference_haversine.c \
-	pairs_parser.c \
+	parser/pairs_parser.c \
 	parser/jparse.c \
 	parser/parser.c \
 	parser/load_file.c \
-	profiler/timer.c \
 	profiler/profiler.c \
 	$(LDFLAGS)	
 

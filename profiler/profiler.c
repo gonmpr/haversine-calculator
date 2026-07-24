@@ -1,10 +1,22 @@
+#define _GNU_SOURCE
 #include <stdio.h>
+#include <inttypes.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <time.h>
 #include "profiler.h"
 
-#define PROFILER_SIZE_STARTUP 4
+#if defined(_MSC_VER)
+    #include <intrin.h>
+#else
+    #include <x86intrin.h>
+#endif
+
+//            ## SETTINGS ##
+
+#define OS_TIMER_FREQUENCY 1000000000ULL
+
+#define PROFILER_SIZE_entryUP 4
 #define SCOPE_STACK_LIMIT 1024
 
 static profiler_t profiler = {0};
@@ -13,6 +25,7 @@ static recorder_scope_t scope_stack[SCOPE_STACK_LIMIT];
 static size_t scope_stack_counter;
 
 
+//          ## EXCLUSIVE TIME STACK ## 
 
 void start_profile_scope(const char *name)
 {
@@ -42,8 +55,8 @@ void end_profile_scope(const char *name)
     return;
   }
 
-  unsigned long long elapsed = read_cpu_clock() - current->cycles_start;
-  unsigned long long exclusive = elapsed - current->cycles_child;
+  u64 elapsed = read_cpu_clock() - current->cycles_start;
+  u64 exclusive = elapsed - current->cycles_child;
 
   profile_record(current->name, exclusive);
 
@@ -55,15 +68,16 @@ void end_profile_scope(const char *name)
 
 }
 
+//            ## PROFILER UTILS ##
 
 static profiler_t profiler_init(size_t size){
   if (size == 0) size = 2;
 
-  record_t *start = malloc(sizeof(record_t) * size);
-  if(!start) return (profiler_t){0};
+  record_t *entry = malloc(sizeof(record_t) * size);
+  if(!entry) return (profiler_t){0};
 
   profiler_t tmp_profiler = {
-      .start = start,
+      .entry = entry,
       .count = 0,
       .capacity = size,
   };
@@ -79,22 +93,22 @@ static bool profiler_push(profiler_t *profiler, record_t record)
     profiler->capacity *= 2;
     profiler->capacity = profiler->capacity == 0 ? 2 : profiler->capacity;
 
-    record_t *new_start = realloc(profiler->start, 
+    record_t *new_entry = realloc(profiler->entry, 
                               sizeof(record_t) * profiler->capacity);
-    if (!new_start) return false;
-    profiler->start = new_start;
+    if (!new_entry) return false;
+    profiler->entry = new_entry;
   }
 
-  profiler->start[profiler->count] = record;
+  profiler->entry[profiler->count] = record;
   profiler->count++;
   return true;
 }
 
 static void profiler_free(profiler_t *profiler)
 {
-  free(profiler->start);
+  free(profiler->entry);
 
-  profiler->start = NULL;
+  profiler->entry = NULL;
   profiler->count = 0;
   profiler->capacity = 0;
 
@@ -102,62 +116,89 @@ static void profiler_free(profiler_t *profiler)
 }
 
     
+//            ## PROFILER ##
 
-bool profile_record(const char *name, unsigned long long cycles)
+bool profile_record(const char *name, u64 cycles)
 {
-  if (profiler.start == NULL){
-    profiler = profiler_init(PROFILER_SIZE_STARTUP);
+  if (profiler.entry == NULL){
+    profiler = profiler_init(PROFILER_SIZE_entryUP);
   }
 
   for(size_t i = 0; i < profiler.count; i++){
 
-    if(!strcmp(name, profiler.start[i].name)){
+    if(!strcmp(name, profiler.entry[i].name)){
 
-      profiler.start[i].calls++;
-      profiler.start[i].cycles += cycles;
+      profiler.entry[i].calls++;
+      profiler.entry[i].cycles += cycles;
 
       return true;
     }
   }
 
-  record_t new_record = {.name = name, 
-                           .cycles = cycles, 
-                           .calls = 1};
-
+  record_t new_record = {.name = name, .cycles = cycles, .calls = 1};
   return profiler_push(&profiler, new_record);
+}
+
+bool profiler_dump(const char *file_name){
+
+  FILE *file_ptr;
+  file_ptr = fopen(file_name, "w");
+  if (file_ptr == NULL) return false;
+
+  u64 total_cycles = 0;
+  for(size_t i = 0; i < profiler.count; i++){
+    total_cycles += profiler.entry[i].cycles;
+  }
+
+  fprintf(file_ptr,
+          "\n  ESTIMATED CPU CLOCK: %" PRIu64 " Hz\n", 
+          get_cpu_freq());
+
+  fprintf(file_ptr, "  TOTAL CYCLES: %" PRIu64 " (100%%)\n\n", total_cycles);
+
+
+  for(size_t i = 0; i < profiler.count; i++){
+  fprintf(
+    file_ptr,
+    "  %s[%zu]: %" PRIu64 " (%.2f%%)\n",
+    profiler.entry[i].name,
+    profiler.entry[i].calls,
+    profiler.entry[i].cycles,
+    ((double)profiler.entry[i].cycles / total_cycles) * 100
+  );
+  }
+  fprintf(file_ptr, "\n");
+
+  fclose(file_ptr);
+  profiler_free(&profiler);
+  return true;
 }
 
 
 
-bool profiler_dump(const char *file_name){
+//            ## TIMER ##
 
-    FILE *file_ptr;
-    file_ptr = fopen(file_name, "w");
-    if (file_ptr == NULL) return false;
+u64 get_cpu_freq(void)
+{
+  u64 os_entry  = read_os_timer();
+  u64 cpu_entry = read_cpu_clock();
 
-    unsigned long long total_cycles = 0;
-    for(size_t i = 0; i < profiler.count; i++){
-      total_cycles += profiler.start[i].cycles;
-    }
+  while (read_os_timer() - os_entry < OS_TIMER_FREQUENCY)
+      ;
 
+  u64 cpu_end = read_cpu_clock();
+  return cpu_end - cpu_entry;
+}
 
-    unsigned long long cpu_freq = get_cpu_freq();
-    fprintf(file_ptr, "ESTIMATED CPU CLOCK: %llu Hz\n", cpu_freq);
-    fprintf(file_ptr, "TOTAL CYCLES: %llu (100%%)\n\n", total_cycles);
+u64 read_cpu_clock(void)
+{
+  return __rdtsc();
+}
 
+u64 read_os_timer(void)
+{
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
 
-    for(size_t i = 0; i < profiler.count; i++){
-        fprintf(
-          file_ptr,
-          "%s[%zu]: %llu (%.2f%%)\n",
-          profiler.start[i].name,
-          profiler.start[i].calls,
-          profiler.start[i].cycles,
-          ((double)profiler.start[i].cycles / total_cycles) * 100
-        );
-    }
-
-    fclose(file_ptr);
-    profiler_free(&profiler);
-    return true;
+  return (u64)ts.tv_sec * OS_TIMER_FREQUENCY + ts.tv_nsec;
 }

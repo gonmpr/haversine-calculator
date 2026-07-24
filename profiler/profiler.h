@@ -1,6 +1,6 @@
 #pragma once
-#include "timer.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 // NOTE: THE TIME REPORTED IS EXCLUSIVE; IF YOU HAVE A BLOCK INSIDE
 // OTHER, THE EXTERIOR ONE REPORTS THE TIME EXCLUIDING THE INTERIOR ONE.
@@ -14,7 +14,7 @@
 // WITH return, break OR goto STATEMENTS 
 
 // IF YOU WANT TO DISABLE THE PROFILER,
-// ADD #include PROFILER_ENABLED 0
+// ADD #define PROFILER_ENABLED 0
 
 #ifndef PROFILER_ENABLED
 #define PROFILER_ENABLED 1
@@ -47,29 +47,34 @@
 
 #endif
 
-
+typedef uint64_t u64;
 
 typedef struct {
   const char *name;
-  unsigned long long cycles;
+  u64 cycles;
   size_t calls;
 } record_t;
 
 
 typedef struct {
-  record_t *start;
+  record_t *entry;
   size_t count;
   size_t capacity;
 } profiler_t;
 
 typedef struct {
-  unsigned long long cycles_start;
-  unsigned long long cycles_child;
+  u64 cycles_start;
+  u64 cycles_child;
   const char *name;
 } recorder_scope_t;
 
-bool profile_record(const char *name, unsigned long long cycles);
+u64 get_cpu_freq(void);
+u64 read_cpu_clock(void);
+u64 read_os_timer(void);
+
+bool profile_record(const char *name, u64 cycles);
 bool profiler_dump(const char *file_name);
 
 void start_profile_scope(const char *name);
 void end_profile_scope(const char *name);
+
